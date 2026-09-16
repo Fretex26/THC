@@ -1,0 +1,11 @@
+services:
+  app:
+    build:
+      target: test
+    container_name: thchallenge-test
+    restart: no
+    env_file:
+      - .env.docker-test
+    environment:
+      NODE_ENV: test
+      DOCKER_TEST: "true"
