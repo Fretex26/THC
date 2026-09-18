@@ -1,78 +1,56 @@
-# This config was automatically generated from your source code
-# Stacks detected: deps:node:.,test:jest:
 version: 2.1
+
 orbs:
-  node: circleci/node@5
+  node: circleci/node@7
+
 jobs:
-  test-node:
-    # Install node dependencies and run tests
-    executor: node/default
-    environment:
-      JEST_JUNIT_OUTPUT_DIR: ./test-results/
-    steps:
-      - checkout
-      - node/install-packages:
-          pkg-manager: npm
-      - run:
-          command: npm install jest-junit
-      - run:
-          name: Run tests
-          command: npm run test --ci --runInBand --reporters=default --reporters=jest-junit
-      - store_test_results:
-          path: ./test-results/
-  build-node:
-    # Build node project
-    executor: node/default
-    steps:
-      - checkout
-      - node/install-packages:
-          pkg-manager: npm
-      - run:
-          command: npm run build
-      - run:
-          name: Create the ~/artifacts directory if it doesn't exist
-          command: mkdir -p ~/artifacts
-      # Copy output to artifacts dir
-      - run:
-          name: Copy artifacts
-          command: cp -R build dist public .output .next .docusaurus ~/artifacts 2>/dev/null || true
-      - store_artifacts:
-          path: ~/artifacts
-          destination: node-build
-  deploy:
-    # This is an example deploy job, not actually used by the workflow
+  quality:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/node:22.16
     steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: npm
       - run:
-          name: Plan deployment
-          command: |-
-            circleci run release plan deploy \
-              --environment-name="default" \
-              --component-name="deploy" \
-              --target-version="1.0.${CIRCLE_BUILD_NUM}-${CIRCLE_SHA1:0:7}"
-      # Replace this with steps to deploy to users
+          name: Unit tests
+          command: npm test -- --ci --runInBand
       - run:
-          name: deploy
-          command: '#e.g. ./deploy.sh'
+          name: Build
+          command: npm run build
+      - store_artifacts:
+          path: dist
+          destination: nest-build
+
+  e2e:
+    docker:
+      - image: cimg/node:22.16
+      - image: postgres:16-alpine
+        environment:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: admin
+          POSTGRES_DB: thchallenge
+    steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: npm
       - run:
-          name: Update deployment status to running
-          command: circleci run release update deploy --status=RUNNING
+          name: Wait for Postgres
+          command: |
+            for i in $(seq 1 30); do
+              if (echo > /dev/tcp/127.0.0.1/5432) >/dev/null 2>&1; then
+                echo "Postgres is ready"
+                exit 0
+              fi
+              sleep 1
+            done
+            echo "Postgres did not become ready in time" >&2
+            exit 1
       - run:
-          name: Update deployment status to success
-          command: circleci run release update deploy --status=SUCCESS
-          when: on_success
-      - run:
-          name: Update deployment status to failed
-          command: circleci run release update deploy --status=FAILED
-          when: on_fail
+          name: End-to-end tests
+          command: npm run test:e2e
+
 workflows:
   build-and-test:
     jobs:
-      - test-node
-      - build-node:
-          requires:
-            - test-node
-    # - deploy:
-    #     requires:
-    #       - build-node
+      - quality
+      - e2e
