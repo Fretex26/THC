@@ -61,7 +61,7 @@ jobs:
       - image: cimg/node:22.16
     steps:
       - coveralls/upload:
-        parallel_finished: true
+          parallel_finished: true
 
 workflows:
   build-and-test:
