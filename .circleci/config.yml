@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   node: circleci/node@7
+  coveralls: coveralls/coveralls@2.2.5
 
 jobs:
   quality:
@@ -13,7 +14,10 @@ jobs:
           pkg-manager: npm
       - run:
           name: Unit tests
-          command: npm test -- --ci --runInBand
+          command: npm run test:cov -- --ci --runInBand
+      - coveralls/upload:
+          parallel: true
+          flag_name: unit
       - run:
           name: Build
           command: npm run build
@@ -47,7 +51,17 @@ jobs:
             exit 1
       - run:
           name: End-to-end tests
-          command: npm run test:e2e
+          command: npm run test:e2e:cov -- --ci
+      - coveralls/upload:
+          parallel: true
+          flag_name: e2e
+        
+  notify-coveralls:
+    docker:
+      - image: cimg/node:22.16
+    steps:
+      -coveralls/upload:
+        parallel_finished: true
 
 workflows:
   build-and-test:
