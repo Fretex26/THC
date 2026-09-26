@@ -60,7 +60,7 @@ jobs:
     docker:
       - image: cimg/node:22.16
     steps:
-      -coveralls/upload:
+      - coveralls/upload:
         parallel_finished: true
 
 workflows:
@@ -68,3 +68,7 @@ workflows:
     jobs:
       - quality
       - e2e
+      - notify-coveralls:
+          requires:
+            - quality
+            - e2e
