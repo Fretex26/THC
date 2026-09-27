@@ -1,0 +1,74 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@7
+  coveralls: coveralls/coveralls@2.2.5
+
+jobs:
+  quality:
+    docker:
+      - image: cimg/node:22.16
+    steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: npm
+      - run:
+          name: Unit tests
+          command: npm run test:cov -- --ci --runInBand
+      - coveralls/upload:
+          parallel: true
+          flag_name: unit
+      - run:
+          name: Build
+          command: npm run build
+      - store_artifacts:
+          path: dist
+          destination: nest-build
+
+  e2e:
+    docker:
+      - image: cimg/node:22.16
+      - image: postgres:16-alpine
+        environment:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: admin
+          POSTGRES_DB: thchallenge
+    steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: npm
+      - run:
+          name: Wait for Postgres
+          command: |
+            for i in $(seq 1 30); do
+              if (echo > /dev/tcp/127.0.0.1/5432) >/dev/null 2>&1; then
+                echo "Postgres is ready"
+                exit 0
+              fi
+              sleep 1
+            done
+            echo "Postgres did not become ready in time" >&2
+            exit 1
+      - run:
+          name: End-to-end tests
+          command: npm run test:e2e:cov -- --ci
+      - coveralls/upload:
+          parallel: true
+          flag_name: e2e
+        
+  notify-coveralls:
+    docker:
+      - image: cimg/node:22.16
+    steps:
+      - coveralls/upload:
+          parallel_finished: true
+
+workflows:
+  build-and-test:
+    jobs:
+      - quality
+      - e2e
+      - notify-coveralls:
+          requires:
+            - quality
+            - e2e
