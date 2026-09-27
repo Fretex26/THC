@@ -10,6 +10,7 @@ This repository is a **take-home challenge template**. The problem statement bel
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/circleci/Tq8gYs4qewaE3ExgDwSHkJ/BgQnZTVcLqWG2Uxg9brNj3/tree/main.svg?style=svg&circle-token=CCIPRJ_96GDujNaascaKNsU6i4XxZ_559fb8b9e31f25853b4f09e0b4e7ff06623883d8)](https://dl.circleci.com/status-badge/redirect/circleci/Tq8gYs4qewaE3ExgDwSHkJ/BgQnZTVcLqWG2Uxg9brNj3/tree/main)
 
+[![Coverage Status](https://coveralls.io/repos/github/Fretex26/THC/badge.svg?branch=circleci-project-setup)](https://coveralls.io/github/Fretex26/THC?branch=circleci-project-setup)
 ---
 
 ## Table of contents
