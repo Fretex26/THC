@@ -19,12 +19,18 @@
     "test:e2e:cov": "jest --config ./test/jest-e2e.json --runInBand --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
+    "ensure:test-db": "ts-node -r tsconfig-paths/register test/helpers/ensure-test-db.ts",
+    "test:e2e:docker": "npm run ensure:test-db && npm run migration:up && npm run test:e2e",
     "docker:up": "docker compose up --build -d postgres app pgadmin",
     "docker:up:recreate": "docker compose up --build --force-recreate -d postgres app pgadmin",
     "docker:test": "docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build app",
     "docker:test:recreate": "docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build --force-recreate postgres && docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build app",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f app"
+    "docker:logs": "docker compose logs -f app",
+    "typeorm": "typeorm-ts-node-commonjs",
+    "migration:generate": "npm run typeorm -- migration:generate -d src/database/data-source.ts",
+    "migration:up": "npm run typeorm -- migration:run -d src/database/data-source.ts",
+    "migration:down": "npm run typeorm -- migration:revert -d src/database/data-source.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
