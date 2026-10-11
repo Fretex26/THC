@@ -85,6 +85,19 @@ Then when the `app` container is healthy (postgres is up and ready to work), the
 
 pgAdmin login: `admin@admin.com` / `admin`. Register a server with host `postgres`, port `5432`, user `admin`, password `admin`, database `thchallenge`.
 
+### Seeded demo users
+
+On container start the production image runs migrations, then an **idempotent seed** (`src/database/seed.ts`), then Nest. These users are already in the database:
+
+| Name         | Email              | Password | Favorite films                             |
+| ------------ | ------------------ | -------- | ------------------------------------------ |
+| Clark Kent   | `clark@kent.com`   | `123456` | Castle in the Sky, Kiki's Delivery Service |
+| Diana Prince | `diana@prince.com` | `123456` | Grave of the Fireflies                     |
+| Bruce Wayne  | `bruce@wayne.com`  | `123456` | none                                       |
+| Barry Allen  | `barry@allen.com`  | `123456` | Kiki's Delivery Service, Only Yesterday    |
+
+Try in Swagger: `GET /users/clark@kent.com`.
+
 ---
 
 ## Interactive API docs (Swagger)
@@ -150,7 +163,7 @@ src/
   main.ts                         Swagger, ValidationPipe, listen
   app.module.ts                   Database + Users + domain exception filter
   common/                         DomainError, HTTP mapping, exception filter
-  database/                       TypeORM config, DataSource, migrations
+  database/                       TypeORM config, DataSource, migrations, seed
   users/
     domain/                       Entity, VO, ports, errors
     application/                  Use cases, DTOs, mappers, DI tokens
@@ -293,7 +306,7 @@ From the repo root, after `cp .env.example .env` (see [Quick start](#quick-start
 npm run docker:up
 ```
 
-This builds the **production** image and starts the containers, PostgreSQL (healthcheck), the API on port `3000`, and pgAdmin on port `5050`. On container start the production image runs pending TypeORM migrations, then starts Nest. Reviewers do not run `migration:up` by hand for Docker.
+This builds the **production** image and starts the containers, PostgreSQL (healthcheck), the API on port `3000`, and pgAdmin on port `5050`. On container start the production image runs pending TypeORM migrations, then the demo user seed, then Nest. Reviewers do not run `migration:up` or `seed` by hand for Docker.
 
 Useful scripts:
 
@@ -317,10 +330,13 @@ The API container sets `DB_HOST=postgres` so it talks to the Compose network, no
 2. `.env` from `.env.example` already uses `DB_HOST=localhost` (do not set it to `postgres` on the host).
 3. Apply DB schema once on a fresh database (`synchronize` is off):
   ```
-  npm install 
-  npm run migration:up
+  npm run seed
   ```
-4. Run the API:
+4. (Optional) Load demo users:
+  ```
+  npm run start:dev
+  ```
+5. Run the API:
   ```
   npm run start:dev
   ```
@@ -336,13 +352,15 @@ Other npm scripts:
 | `npm run start:prod`     | `node dist/main`             |
 | `npm run lint`           | ESLint with `--fix`          |
 | `npm run format`         | Prettier on `src` and `test` |
+| `npm run seed`           | Insert demo users if missing (uses `.env`) |
 | `npm run migration:generate -- src/database/migrations/Name` | Diff entities → new migration file |
 | `npm run migration:up`   | Apply pending migrations (uses `.env` / process env) |
 | `npm run migration:down` | Revert the last migration    |
 
 
 Schema lives in `src/database/migrations/` with `synchronize: false`.
-Docker production runs `migration:run` before `node dist/main.js`. Docker tests run `npm run test:e2e:docker` (`ensure:test-db` → `migration:up` → `test:e2e`).
+Demo users live in `src/database/seed.ts` (idempotent: skips emails that already exist).
+Docker production runs `migration:run`, then `node dist/database/seed.js`, then `node dist/main.js`. Docker tests run `npm run test:e2e:docker` (`ensure:test-db` → `migration:up` → `test:e2e`) and **do not** run the demo seed.
 
 ---
 
@@ -373,7 +391,7 @@ cp .env.example .env
 - `docker-compose.test.yml` — overrides `app` to the **test** image target, loads `.env.docker-test`, sets `NODE_ENV=test` and `DOCKER_TEST=true`.
 - `Dockerfile` — multi-stage:
   - `builder` — `npm ci` + `nest build`
-  - `production` — production deps + `dist`, `CMD` runs TypeORM `migration:run`, then `node dist/main.js`
+  - `production` — production deps + `dist`, `CMD` runs TypeORM `migration:run`, then `seed`, then `node dist/main.js`
   - `test` — full dev install; `CMD` is `npm run test:e2e:docker`
 
 Postgres data lives in the `postgres_data` volume. To wipe the database, remove the volume.
@@ -387,7 +405,7 @@ docker compose down -v
 1. Docker is installed and the daemon is running.
 2. Ports `3000`, `5432`, and `5050` are free.
 3. `.env` exists (`cp .env.example .env`). `DB_HOST` in that file is `localhost`; Compose overrides it to `postgres` for the app container.
-4. `npm run docker:up` then open [http://localhost:3000/swagger](http://localhost:3000/swagger).
+4. `npm run docker:up` then open [http://localhost:3000/swagger](http://localhost:3000/swagger). Call `GET /users/clark@kent.com` to confirm the seed.
 5. Optional: `npm run docker:test` (see [Testing](#testing)).
 6. `npm run docker:down` when finished.
 

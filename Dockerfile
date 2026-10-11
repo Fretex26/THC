@@ -14,7 +14,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev && apk del python3 make g++
 COPY --from=builder /app/dist ./dist
 EXPOSE 3000
-CMD ["sh", "-c", "node ./node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js && node dist/main.js"]
+CMD ["sh", "-c", "node ./node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js && node dist/database/seed.js && node dist/main.js"]
 
 FROM node:22-alpine AS test
 WORKDIR /app
