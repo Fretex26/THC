@@ -8,9 +8,9 @@ This repository is a **take-home challenge template**. The problem statement bel
 
 ## Badges
 
-[![CircleCI](https://dl.circleci.com/status-badge/img/circleci/Tq8gYs4qewaE3ExgDwSHkJ/BgQnZTVcLqWG2Uxg9brNj3/tree/feat/Migrations.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/Tq8gYs4qewaE3ExgDwSHkJ/BgQnZTVcLqWG2Uxg9brNj3/tree/feat/Migrations)
+[![CircleCI](https://dl.circleci.com/status-badge/img/circleci/Tq8gYs4qewaE3ExgDwSHkJ/567c0d4e-0046-478e-b961-e0910a365682/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/Tq8gYs4qewaE3ExgDwSHkJ/567c0d4e-0046-478e-b961-e0910a365682/tree/main)
 
-[![Coverage Status](https://coveralls.io/repos/github/Fretex26/THC/badge.svg?branch=feat/Migrations)](https://coveralls.io/github/Fretex26/THC?branch=feat/Migrations)
+[![Coverage Status](https://coveralls.io/repos/github/Fretex26/THC/badge.svg?branch=main)](https://coveralls.io/github/Fretex26/THC?branch=main)
 ---
 
 ## Table of contents
