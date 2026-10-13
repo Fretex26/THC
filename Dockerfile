@@ -14,7 +14,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev && apk del python3 make g++
 COPY --from=builder /app/dist ./dist
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "node ./node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js && node dist/database/seed.js && node dist/main.js"]
 
 FROM node:22-alpine AS test
 WORKDIR /app
@@ -22,4 +22,4 @@ RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 RUN npm ci
 COPY . .
-CMD ["npm", "run", "test:e2e"]
+CMD ["npm", "run", "test:e2e:docker"]

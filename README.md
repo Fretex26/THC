@@ -8,9 +8,9 @@ This repository is a **take-home challenge template**. The problem statement bel
 
 ## Badges
 
-[![CircleCI](https://dl.circleci.com/status-badge/img/circleci/Tq8gYs4qewaE3ExgDwSHkJ/BgQnZTVcLqWG2Uxg9brNj3/tree/main.svg?style=svg&circle-token=CCIPRJ_96GDujNaascaKNsU6i4XxZ_559fb8b9e31f25853b4f09e0b4e7ff06623883d8)](https://dl.circleci.com/status-badge/redirect/circleci/Tq8gYs4qewaE3ExgDwSHkJ/BgQnZTVcLqWG2Uxg9brNj3/tree/main)
+[![CircleCI](https://dl.circleci.com/status-badge/img/circleci/Tq8gYs4qewaE3ExgDwSHkJ/BgQnZTVcLqWG2Uxg9brNj3/tree/feat/Migrations.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/Tq8gYs4qewaE3ExgDwSHkJ/BgQnZTVcLqWG2Uxg9brNj3/tree/feat/Migrations)
 
-[![Coverage Status](https://coveralls.io/repos/github/Fretex26/THC/badge.svg?branch=circleci-project-setup)](https://coveralls.io/github/Fretex26/THC?branch=circleci-project-setup)
+[![Coverage Status](https://coveralls.io/repos/github/Fretex26/THC/badge.svg?branch=feat/Migrations)](https://coveralls.io/github/Fretex26/THC?branch=feat/Migrations)
 ---
 
 ## Table of contents
@@ -52,6 +52,7 @@ What this codebase currently implements against that brief:
 | Input validation                              | Global `ValidationPipe`                       |
 | Documented HTTP API                           | Swagger at `/swagger`                         |
 | Reproducible local run                        | Docker Compose                                |
+| DB Schema management                          | TypeORM migrations (`synchronize: false`)     |
 | Automated tests                               | End-to-end against a real Postgres and Docker |
 
 
@@ -83,6 +84,19 @@ Then when the `app` container is healthy (postgres is up and ready to work), the
 
 
 pgAdmin login: `admin@admin.com` / `admin`. Register a server with host `postgres`, port `5432`, user `admin`, password `admin`, database `thchallenge`.
+
+### Seeded demo users
+
+On container start the production image runs migrations, then an **idempotent seed** (`src/database/seed.ts`), then Nest. These users are already in the database:
+
+| Name         | Email              | Password | Favorite films                             |
+| ------------ | ------------------ | -------- | ------------------------------------------ |
+| Clark Kent   | `clark@kent.com`   | `123456` | Castle in the Sky, Kiki's Delivery Service |
+| Diana Prince | `diana@prince.com` | `123456` | Grave of the Fireflies                     |
+| Bruce Wayne  | `bruce@wayne.com`  | `123456` | none                                       |
+| Barry Allen  | `barry@allen.com`  | `123456` | Kiki's Delivery Service, Only Yesterday    |
+
+Try in Swagger: `GET /users/clark@kent.com`.
 
 ---
 
@@ -130,7 +144,7 @@ If a port is already taken, Docker will fail at bind time. Stop the conflicting 
 | Framework         | NestJS 11                                              | Is one of the most popular Back-end frameworks with separation of concerns with tools for that like Modules, DI, pipes, filters, and OpenAPI with little ceremony. And allows to scale aplications with any architectural style. |
 | HTTP              | Express (Nest platform)                                | Default Nest adapter; enough for this service size.                                                                                                                                                                              |
 | Validation        | `class-validator` + `class-transformer`                | Fail fast at the edge. Unknown fields are rejected (`forbidNonWhitelisted`).                                                                                                                                                     |
-| Persistence       | PostgreSQL 16 + TypeORM                                | Relational integrity (unique email, UUID PK, UUID array for film IDs). TypeORM fits Nest's module model.                                                                                                                         |
+| Persistence       | PostgreSQL 16 + TypeORM                                | Relational integrity (unique email, UUID PK, UUID array for film IDs). Schema is versioned with TypeORM migrations (`synchronize: false`).                                                                                                                         |
 | Password hashing  | bcrypt                                                 | Passwords are stored only as hashes. Comparison lives on a value object, not in the controller.                                                                                                                                  |
 | External films    | Studio Ghibli HTTP API                                 | Real third-party dependency behind a port, so tests do not hit the network.                                                                                                                                                      |
 | Docs              | `@nestjs/swagger`                                      | Living contract for reviewers.                                                                                                                                                                                                   |
@@ -149,7 +163,7 @@ src/
   main.ts                         Swagger, ValidationPipe, listen
   app.module.ts                   Database + Users + domain exception filter
   common/                         DomainError, HTTP mapping, exception filter
-  database/                       TypeORM module + config
+  database/                       TypeORM config, DataSource, migrations, seed
   users/
     domain/                       Entity, VO, ports, errors
     application/                  Use cases, DTOs, mappers, DI tokens
@@ -175,7 +189,7 @@ src/
 │   │
 │   └── infrastructure/     Maps that code to HTTP status + JSON body
 │
-├── database/               Postgres connection (TypeORM)
+├── database/               Postgres connection (TypeORM) + Migrations
 │
 └── users/                  Users bounded context
     │
@@ -211,7 +225,7 @@ src/
 1. **Readability.** Any colleage can see where business rules and edge layers are.
 2. **Testability.** E2E tests replace only the Ghibli gateway. Postgres stays real. That is only possible because the gateway is a port, not a hard-coded `fetch` inside the use case.
 3. **Replaceability.** Swapping Ghibli for another catalog, or TypeORM for prisma, should not rewrite use cases or domain.
-4. **Honest boundaries.** HTTP status codes are an infrastructure concern. Domain errors carry a stable `code` (`USER_NOT_FOUND`, `USER_ALREADY_EXISTS`) so clients and tests assert on meaning, not on a string message. This is a small event-sourced system that shows how the service would grow.
+4. **Honest boundaries.** HTTP status codes are an infrastructure concern. Domain errors carry a stable `code` (`USER_NOT_FOUND`, `USER_ALREADY_EXISTS`) so clients and tests assert on meaning, not on a string message. This is a small “hexagonal / clean architecture” system that shows how the service would grow.
 
 ---
 
@@ -292,7 +306,7 @@ From the repo root, after `cp .env.example .env` (see [Quick start](#quick-start
 npm run docker:up
 ```
 
-This builds the **production** image and starts the containers, PostgreSQL (healthcheck), the API on port `3000`, and pgAdmin on port `5050`.
+This builds the **production** image and starts the containers, PostgreSQL (healthcheck), the API on port `3000`, and pgAdmin on port `5050`. On container start the production image runs pending TypeORM migrations, then the demo user seed, then Nest. Reviewers do not run `migration:up` or `seed` by hand for Docker.
 
 Useful scripts:
 
@@ -314,26 +328,39 @@ The API container sets `DB_HOST=postgres` so it talks to the Compose network, no
   docker compose up -d postgres
   ```
 2. `.env` from `.env.example` already uses `DB_HOST=localhost` (do not set it to `postgres` on the host).
-3. Install and run:
+3. Apply DB schema once on a fresh database (`synchronize` is off):
   ```
-  npm install
+  npm run seed
+  ```
+4. (Optional) Load demo users:
+  ```
+  npm run start:dev
+  ```
+5. Run the API:
+  ```
   npm run start:dev
   ```
 
 Other npm scripts:
 
 
-| Script                | Purpose                      |
-| --------------------- | ---------------------------- |
-| `npm run start:dev`   | Watch mode                   |
-| `npm run start:debug` | Watch + debugger             |
-| `npm run build`       | Compile to `dist/`           |
-| `npm run start:prod`  | `node dist/main`             |
-| `npm run lint`        | ESLint with `--fix`          |
-| `npm run format`      | Prettier on `src` and `test` |
+| Script                   | Purpose                      |
+| ------------------------ | ---------------------------- |
+| `npm run start:dev`      | Watch mode                   |
+| `npm run start:debug`    | Watch + debugger             |
+| `npm run build`          | Compile to `dist/`           |
+| `npm run start:prod`     | `node dist/main`             |
+| `npm run lint`           | ESLint with `--fix`          |
+| `npm run format`         | Prettier on `src` and `test` |
+| `npm run seed`           | Insert demo users if missing (uses `.env`) |
+| `npm run migration:generate -- src/database/migrations/Name` | Diff entities → new migration file |
+| `npm run migration:up`   | Apply pending migrations (uses `.env` / process env) |
+| `npm run migration:down` | Revert the last migration    |
 
 
-`synchronize: true` is enabled in TypeORM so the schema is created on boot. That is convenient for a take-home; it is **not** a production migration strategy (see [Known limitations](#known-limitations--what-i-would-improve)).
+Schema lives in `src/database/migrations/` with `synchronize: false`.
+Demo users live in `src/database/seed.ts` (idempotent: skips emails that already exist).
+Docker production runs `migration:run`, then `node dist/database/seed.js`, then `node dist/main.js`. Docker tests run `npm run test:e2e:docker` (`ensure:test-db` → `migration:up` → `test:e2e`) and **do not** run the demo seed.
 
 ---
 
@@ -364,17 +391,21 @@ cp .env.example .env
 - `docker-compose.test.yml` — overrides `app` to the **test** image target, loads `.env.docker-test`, sets `NODE_ENV=test` and `DOCKER_TEST=true`.
 - `Dockerfile` — multi-stage:
   - `builder` — `npm ci` + `nest build`
-  - `production` — production deps + `dist`, `CMD node dist/main.js`
-  - `test` — full dev install, `CMD npm run test:e2e`
+  - `production` — production deps + `dist`, `CMD` runs TypeORM `migration:run`, then `seed`, then `node dist/main.js`
+  - `test` — full dev install; `CMD` is `npm run test:e2e:docker`
 
-Postgres data lives in the `postgres_data` volume. To wipe the database, remove the volume after `docker compose down`.
+Postgres data lives in the `postgres_data` volume. To wipe the database, remove the volume.
+
+```
+docker compose down -v
+```
 
 ### Reviewer checklist
 
 1. Docker is installed and the daemon is running.
 2. Ports `3000`, `5432`, and `5050` are free.
 3. `.env` exists (`cp .env.example .env`). `DB_HOST` in that file is `localhost`; Compose overrides it to `postgres` for the app container.
-4. `npm run docker:up` then open [http://localhost:3000/swagger](http://localhost:3000/swagger).
+4. `npm run docker:up` then open [http://localhost:3000/swagger](http://localhost:3000/swagger). Call `GET /users/clark@kent.com` to confirm the seed.
 5. Optional: `npm run docker:test` (see [Testing](#testing)).
 6. `npm run docker:down` when finished.
 
@@ -394,7 +425,7 @@ For that shape I chose **e2e tests as the primary suite**, not dozens of isolate
 - **Less test code, more code tested.** Helpers (`createE2EApp`, `buildCreateUserPayload`, DB cleaner) keep scenarios short. Coverage of behavior grows without a second copy of every rule in a unit file.
 - **Integration bugs are often the most valuable bugs to catch:** DI tokens, TypeORM column types, `ValidationPipe` flags, global filters, unique constraints. E2E is where those show up.
 - **The only fake is the one I do not own.** The Ghibli gateway is replaced with an in-memory mock (`overrideProvider(DI_TOKENS.GHIBLI_GATEWAY)`). Postgres is real, so it can still prove SQL.
-- **Isolated data.** `global-setup` creates `thchallenge_test` if needed. Each case truncates tables. Host tests use `.env.test`; Docker tests use `.env.docker-test` and `DOCKER_TEST=true`.
+- **Isolated data.** `ensureTestDB` (used by `global-setup` and by `npm run ensure:test-db`) creates `thchallenge_test` if needed by connecting to the `postgres` maintenance DB first. Each case truncates tables. Host tests use `.env.test`; Docker tests use `.env.docker-test` and `DOCKER_TEST=true`.
 
 If the domain grows (billing, complex business rules), I would add unit tests **next to** these e2e tests, not instead of them.
 
@@ -424,22 +455,31 @@ NODE_ENV=test
 
 **Docker (`npm run docker:test`)** — `.env.docker-test` must exist and include the test-only keys from `.env.example`:
 
+```
+NODE_ENV=test 
+DOCKER_TEST=true
+```
+
+`DOCKER_TEST=true` makes helpers load `.env.docker-test` (`DB_HOST=postgres`). Compose also injects these values.
 
 ### How to run tests
 
-**Inside Docker (closest to CI, no local Node required):**
+**Inside Docker (closest to CI):**
 
-Requires `.env.docker-test` with `NODE_ENV=test` and `DOCKER_TEST=true` (see [Test environment files](#test-environment-files)).
-
-Postgres must be up. Then:
+Postgres must be up (e.g. after `npm run docker:up`). Then:
 
 ```
 npm run docker:test
 ```
 
-This builds the `test` stage and executes `npm run test:e2e`.
+That builds the `test` image and runs `npm run test:e2e:docker`, which:
 
-If the test database or containers doesn't run well, use:
+1. `ensure:test-db` — creates `thchallenge_test` if missing  
+2. `migration:up` — applies schema  
+3. `test:e2e` — Jest e2e  
+
+If the image or DB looks stale:
+
 
 ```
 npm run docker:test:recreate
@@ -447,21 +487,39 @@ npm run docker:test:recreate
 
 This will force recreation of the image.
 
-**On the host** (Postgres on `5432`; `.env.test` with `NODE_ENV=test`, `DB_HOST=localhost`, database `thchallenge_test`):
+**On the host** (Postgres on `5432`; `.env.test` for Jest):
 
 ```
 docker compose up -d postgres
 npm install
+npm run ensure:test-db
+```
+
+Then apply migrations **against the test database** (TypeORM’s DataSource loads `.env` by default; point it at `.env.test`):
+
+**PowerShell**
+```
+$env:DOTENV_CONFIG_PATH=".env.test"; npm run migration:up 
+npm run test:e2e
+```
+
+**bash**
+```
+DOTENV_CONFIG_PATH=.env.test npm run migration:up 
 npm run test:e2e
 ```
 
 
-| Script                | Purpose                                        |
-| --------------------- | ---------------------------------------------- |
-| `npm run test:e2e`    | Jest e2e (`test/jest-e2e.json`, `--runInBand`) |
-| `npm run docker:test` | Same suite inside the test image               |
-| `npm test`            | Unit glob under `src/` (sparse today)          |
-| `npm run test:cov`    | Coverage for that unit glob                    |
+| Script                    | Purpose                                         |
+| ------------------------- | ----------------------------------------------- |
+| `npm run docker:test`     | Full e2e in Docker (`test:e2e:docker`)          |
+| `npm run test:e2e:docker` | ensure DB → migrate → e2e (used as image `CMD`) |
+| `npm run ensure:test-db`  | Create `thchallenge_test` if needed             |
+| `npm run test:e2e`        | Jest e2e only                                   |
+| `npm run migration:up`    | Apply pending migrations                        |
+| `npm test`                | Unit glob under `src/` (sparse today)           |
+| `npm run test:cov`        | Unit coverage (`jest --coverage` under `src/`)  |
+| `npm run test:e2e:cov`    | E2E with coverage                               |
 
 
 ---
@@ -471,13 +529,12 @@ npm run test:e2e
 These are known gaps, not surprises. I would treat them as the first PR depending on the real requirements.
 
 1. **No authentication or authorization.** Passwords are hashed and a `HashedPassword.isMatch` helper exists, but there is no login, JWT/session, or protected route. `USER_INVALID_CREDENTIALS` is mapped and unused.
-2. `synchronize: true`**.** Fine for a review. Production needs migrations and `synchronize: false`.
-3. **Password policy is documentation-only.** Password still has `@IsString()` / `@IsNotEmpty()` only (`minLength` in Swagger is not aplied in runtime). I would add length and complexity.
-4. **Improve PATCH response.** It returns empty `200` and identifies the user in the body instead of `/users/:email`. I would return the updated, film-enriched user and use a resource URL.
-5. **Ghibli failures per-id are not fully mannaged** (`Promise.allSettled` keeps only fulfilled). A missing film currently disappears from `favoriteFilms` with no error. I would define a contract: fail the request, or return partial data with a warning.
-6. **Operational hardening:** dedicated `/health` (DB ping), structured logs, request IDs, Helmet, rate limits, ConfigModule instead of scattered `process.env`.
-7. **Demo secrets in Compose.** Acceptable for local review; not for a shared environment.
-8. **Starter** `GET /` **hello** can be replaced by `/health`.
+2. **Password policy is documentation-only.** Password still has `@IsString()` / `@IsNotEmpty()` only (`minLength` in Swagger is not aplied in runtime). I would add length and complexity.
+3. **Improve PATCH response.** It returns empty `200` and identifies the user in the body instead of `/users/:email`. I would return the updated, film-enriched user and use a resource URL.
+4. **Ghibli failures per-id are not fully mannaged** (`Promise.allSettled` keeps only fulfilled). A missing film currently disappears from `favoriteFilms` with no error. I would define a contract: fail the request, or return partial data with a warning.
+5. **Operational hardening:** dedicated `/health` (DB ping), structured logs, request IDs, Helmet, rate limits, ConfigModule instead of scattered `process.env`.
+6. **Demo secrets in Compose.** Acceptable for local review; not for a shared environment.
+7. **Starter** `GET /` **hello** can be replaced by `/health`.
 
 ---
 
@@ -486,9 +543,8 @@ These are known gaps, not surprises. I would treat them as the first PR dependin
 If this were moving toward a production service (or the next round of a take-home):
 
 1. **Auth.** `POST /auth/login`, JWT access (and refresh if the requirements need sessions), guards on mutating routes. Hashing is already in the domain.
-2. **Migrations + explicit schema.** TypeORM migrations, unique index documented, seed script.
-3. **User list + pagination.** `GET /users` with cursor or offset, stable sort.
-4. **Cache the Ghibli catalog.** In-memory or Redis so create/get do not trigger HTTP per film ID.
-5. **Observability.** Health telemetry traces around the Ghibli adapter.
-6. **Hardening.** Helmet, throttling, stricter CORS, secrets from a manager rather than `.env` in anything beyond local.
+2. **User list + pagination.** `GET /users` with cursor or offset, stable sort.
+3. **Cache the Ghibli catalog.** In-memory or Redis so create/get do not trigger HTTP per film ID.
+4. **Observability.** Health telemetry traces around the Ghibli adapter.
+5. **Hardening.** Helmet, throttling, stricter CORS, secrets from a manager rather than `.env` in anything beyond local.
 
