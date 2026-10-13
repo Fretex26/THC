@@ -1,6 +1,5 @@
 import { DataSource, DataSourceOptions } from "typeorm";
 import 'dotenv/config'
-import { UserOrmEntity } from "src/users/infrastructure/persistence/user.entity-orm";
 
 export const typeOrmOptions: DataSourceOptions = {
     type: "postgres",
